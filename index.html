@@ -8,11 +8,15 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
   <title>Registro de PD CS50x.ni</title>
 
   <style>
+    /* --- Tus estilos originales van aquí (los he omitido por brevedad, pero debes mantenerlos) --- */
     * {
       box-sizing: border-box;
     }
@@ -135,7 +139,14 @@
       cursor: not-allowed;
     }
 
-    /* Loader styles */
+    .auth-button {
+      background-color: #4285F4;
+    }
+
+    .auth-button:hover {
+      background-color: #3367D6;
+    }
+
     .overlay {
       display: none;
       position: fixed;
@@ -175,6 +186,20 @@
     .show {
       display: block !important;
     }
+
+    #form-wrapper {
+      display: none;
+    }
+
+    /* Ocultar el formulario inicialmente */
+    #auth-container {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    #signout-button {
+      background-color: #6c757d;
+    }
   </style>
 </head>
 
@@ -183,19 +208,27 @@
     <h1 class="title">CS50x.ni Ingreso sesiones de estudiantes Dedicado</h1>
   </header>
 
-  <section class="form-container">
-    <div class="form-card">
+  <div id="auth-container" class="form-container">
+    <p>Por favor, inicia sesión con tu cuenta de Google para continuar.</p>
+    <button id="signin-button" class="form-button auth-button">Iniciar Sesión con Google</button>
+  </div>
+
+  <div id="form-wrapper" class="form-container">
+    <div style="text-align: right; margin-bottom: 12px;">
+      <span id="user-email" style="font-size: 14px; color: #555; margin-right: 10px;"></span>
+      <button id="signout-button" class="form-button"
+        style="width: auto; padding: 6px 12px; font-size: 13px; margin-top: 0;">Cerrar Sesión</button>
+    </div>
+    <section class="form-card">
       <form id="formulario" class="form-grid">
         <div class="form-group">
           <label for="codigo" class="form-label">Código de Staff:</label>
           <input type="text" id="codigo" name="codigo" class="form-input" required placeholder="Ej: asevilla">
         </div>
-
         <div class="form-group">
           <label for="fecha" class="form-label">Fecha:</label>
           <input type="date" id="fecha" name="fecha" class="form-input" required>
         </div>
-
         <div class="form-group">
           <label for="horario" class="form-label">Horario:</label>
           <select id="horario" name="horario" class="form-select">
@@ -205,40 +238,33 @@
             <option value="3:00 - 5:00 PM">3:00 - 5:00 PM</option>
           </select>
         </div>
-
         <div class="form-group">
           <label for="bloques" class="form-label">Bloques Dados:</label>
-          <input type="number" id="bloques" name="bloques" class="form-input" required min="0" max="3"
+          <input type="number" id="bloques" name="bloques" class="form-input" required min="0" max="3" step="0.5"
             inputmode="numeric" placeholder="Ej: 1.5">
         </div>
-
         <div class="form-group">
           <label for="bloquesReales" class="form-label">Bloques Reales:</label>
           <input type="number" id="bloquesReales" name="bloquesReales" class="form-input" required min="0" max="3"
-            placeholder="Ej: 1.0">
+            step="0.5" placeholder="Ej: 1.0">
         </div>
-
         <div class="form-group">
           <label for="estudianteDedicado" class="form-label">Estudiante Dedicado:</label>
           <select id="estudianteDedicado" name="estudianteDedicado" class="form-select" required>
             <option value="">Seleccione un estudiante</option>
           </select>
         </div>
-
         <div class="form-group">
           <label for="temas" class="form-label">Temas Abordados:</label>
           <input type="text" id="temas" name="temas" class="form-input" required
             placeholder="Listar temas separados por coma">
         </div>
-
         <div class="form-group">
           <label for="captura" class="form-label">Captura/Imagen (URL):</label>
           <div style="display: flex; gap: 8px; align-items: center;">
             <input type="text" id="captura" name="captura" class="form-input" placeholder="https://...">
             <a href="https://code-fu.smugmug.com/upload/x36dP6/CS50xniPD" target="_blank" class="form-button"
-              style="padding: 6px 12px; font-size: 13px; width: auto; margin-top: 0;">
-              Subir
-            </a>
+              style="padding: 6px 12px; font-size: 13px; width: auto; margin-top: 0;">Subir</a>
           </div>
         </div>
         <div class="form-group">
@@ -246,162 +272,146 @@
           <input type="text" id="comentario" name="comentario" class="form-input"
             placeholder="Descripción del avance del estudiante y sus entregas." required>
         </div>
-
-        <button type="button" id="submitBtn" class="form-button" onclick="enviarFormulario()">
-          Enviar
-        </button>
+        <button type="button" id="submitBtn" class="form-button">Enviar</button>
       </form>
-    </div>
-  </section>
+    </section>
+  </div>
 
-  <!-- Loader y overlay -->
   <div class="overlay" id="overlay"></div>
   <div class="loader" id="loader"></div>
 
   <script>
-    // ** IMPORTANTE: Reemplaza esta URL con la URL de tu Web App de Google App Script **
-    const webAppUrl = 'https://script.google.com/macros/s/AKfycbzUa95eX64ykNCyiFeTkRmFu9Y1fwd2sng4L4y3GXBlOkU_ZQ_5n5Ww3ISuXxvEHxKHrA/exec';
+    // =================================================================
+    // PASO 1: CONFIGURACIÓN - REEMPLAZA ESTOS VALORES
+    // =================================================================
+    const CLIENT_ID = '772450204148-vu81d95pi2lqmt0745o18dq5rdtpb0da.apps.googleusercontent.com'; // 👈 Pega aquí tu Client ID de OAuth 2.0
+    const SCRIPT_ID = 'AKfycbzXgGLfOB5BjRs7r26O7NtU0Fr6APbwjBpd0lOgSSe1wEaQW16GQhl0PENemoE4u7MeeA';                     // 👈 Pega aquí el ID de tu script
+    const SCOPES = 'https://www.googleapis.com/auth/spreadsheets'; // Permiso para Google Sheets
+    // =================================================================
 
-    document.addEventListener('DOMContentLoaded', function () {
+    let tokenClient;
+    let googleAccessToken = null;
+
+    // --- Funciones de la Interfaz ---
+    function mostrarLoader() { /* ... (código sin cambios) ... */ }
+    function ocultarLoader() { /* ... (código sin cambios) ... */ }
+    function limpiarFormulario() { /* ... (código sin cambios) ... */ }
+
+    // --- Lógica de Autenticación de Google ---
+
+    window.onload = function () {
+      // Inicializar el cliente de token de Google
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: handleTokenResponse, // Función que se ejecuta tras el login
+      });
+
+      // Asignar eventos a los botones
+      document.getElementById('signin-button').onclick = handleAuthClick;
+      document.getElementById('signout-button').onclick = handleSignoutClick;
+      document.getElementById('submitBtn').onclick = enviarFormulario;
+      document.getElementById('codigo').addEventListener('blur', obtenerEstudiantes);
+
+      // Establecer la fecha de hoy
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
       document.getElementById('fecha').value = `${yyyy}-${mm}-${dd}`;
-    });
+    };
 
-    function mostrarLoader() {
-      document.getElementById('loader').classList.add('show');
-      document.getElementById('overlay').classList.add('show');
-      document.getElementById('submitBtn').disabled = true;
-      document.getElementById('submitBtn').textContent = 'Enviando...';
+    function handleAuthClick() {
+      tokenClient.requestAccessToken();
     }
 
-    function ocultarLoader() {
-      document.getElementById('loader').classList.remove('show');
-      document.getElementById('overlay').classList.remove('show');
-      document.getElementById('submitBtn').disabled = false;
-      document.getElementById('submitBtn').textContent = 'Enviar';
+    function handleSignoutClick() {
+      googleAccessToken = null;
+      document.getElementById('auth-container').style.display = 'block';
+      document.getElementById('form-wrapper').style.display = 'none';
     }
 
-    function limpiarFormulario() {
-      // Limpiar campos pero mantener fecha y horario para rapidez
-      document.getElementById('codigo').value = '';
-      document.getElementById('bloques').value = '';
-      document.getElementById('bloquesReales').value = '';
-      document.getElementById('estudianteDedicado').value = '';
-      document.getElementById('temas').value = '';
-      document.getElementById('captura').value = '';
-      document.getElementById('comentario').value = '';
-    }
 
-    async function enviarFormulario() {
-      const campos = ['codigo', 'fecha', 'horario', 'bloques', 'bloquesReales', 'estudianteDedicado', 'temas', 'comentario'];
-
-      for (let campo of campos) {
-        const valor = document.getElementById(campo).value.trim();
-        if (!valor) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: `Por favor completa el campo "${campo}".`
-          });
-          return;
-        }
-      }
-
-      const bloques = document.getElementById('bloques').value;
-      if (isNaN(bloques) || Number(bloques) < 0) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'El campo "Bloques Dados" debe ser un número válido.'
-        });
+    function handleTokenResponse(response) {
+      if (response.error) {
+        console.error('Google Auth Error:', response.error);
+        Swal.fire('Error de Autenticación', 'No se pudo iniciar sesión. Por favor, intenta de nuevo.', 'error');
         return;
+      }
+      googleAccessToken = response.access_token;
+
+      // Ocultar botón de login y mostrar el formulario
+      document.getElementById('auth-container').style.display = 'none';
+      document.getElementById('form-wrapper').style.display = 'block';
+
+      // Opcional: Obtener y mostrar el email del usuario
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+      })
+        .then(res => res.json())
+        .then(profile => {
+          document.getElementById('user-email').textContent = profile.email;
+        });
+    }
+
+    // --- Nueva Función Central para Llamar a la API ---
+
+    async function callAppsScript(functionName, parameters) {
+      if (!googleAccessToken) {
+        Swal.fire('Sesión Expirada', 'Por favor, inicia sesión de nuevo.', 'warning');
+        handleSignoutClick();
+        throw new Error("No access token available.");
       }
 
       mostrarLoader();
-
-      const formData = {
-        codigo: document.getElementById("codigo").value.trim(),
-        fecha: document.getElementById("fecha").value,
-        horario: document.getElementById("horario").value,
-        bloques: Number(document.getElementById("bloques").value),
-        bloquesReales: document.getElementById("bloquesReales").value.trim(),
-        estudianteDedicado: document.getElementById("estudianteDedicado").value.trim(),
-        temas: document.getElementById("temas").value.trim(),
-        captura: document.getElementById("captura").value.trim(),
-        comentario: document.getElementById("comentario").value.trim()
-      };
-
       try {
-        const payload = {
-          action: 'guardar',
-          formData: formData
-        };
-
-        const response = await fetch(webAppUrl, {
+        const res = await fetch(`https://script.googleapis.com/v1/scripts/${SCRIPT_ID}:run`, {
           method: 'POST',
           headers: {
+            'Authorization': `Bearer ${googleAccessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            'function': functionName,
+            'parameters': parameters,
+          }),
         });
 
-        const data = await response.json();
+        const result = await res.json();
         ocultarLoader();
 
-        if (data.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'Éxito',
-            text: 'Los datos han sido guardados correctamente.'
-          });
-          limpiarFormulario();
-        } else {
-          if (data.estudiantesValidos) {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: data.error + ' Estudiantes válidos: ' + data.estudiantesValidos
-            });
+        if (result.error) {
+          // Error en la ejecución de la API de Google
+          if (result.error.code === 401) { // Token expirado o inválido
+            handleSignoutClick();
+            Swal.fire('Error de Autorización', 'Tu sesión ha expirado. Por favor, inicia sesión de nuevo.', 'error');
           } else {
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: data.error
-            });
+            Swal.fire('Error de API', result.error.message, 'error');
           }
+          throw result.error;
         }
+
+        // Retorna la respuesta de tu función de Apps Script
+        return result.response.result;
+
       } catch (error) {
         ocultarLoader();
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudo enviar la información. Intenta nuevamente.'
-        });
-        console.error('Error:', error);
+        console.error(`Error llamando a ${functionName}:`, error);
+        throw error; // Propagar el error para manejo específico
       }
     }
 
-    document.getElementById("codigo").addEventListener("blur", async function () {
-      const codigo = this.value.trim();
+
+    // --- Lógica del Formulario Adaptada ---
+
+    async function obtenerEstudiantes() {
+      const codigo = document.getElementById("codigo").value.trim();
       const selectEstudiante = document.getElementById("estudianteDedicado");
       selectEstudiante.innerHTML = '<option value="">Seleccione un estudiante</option>';
-
       if (!codigo) return;
 
-      //mostrarLoader();
-
       try {
-        const url = new URL(webAppUrl);
-        url.searchParams.append('action', 'obtenerEstudiantes');
-        url.searchParams.append('codigo', codigo);
-
-        const response = await fetch(url);
-        const data = await response.json();
-        ocultarLoader();
-
+        const data = await callAppsScript('obtenerEstudiantesPorCodigo', [codigo]);
         if (data.success) {
           data.estudiantes.forEach(function (est) {
             const option = document.createElement("option");
@@ -410,22 +420,78 @@
             selectEstudiante.appendChild(option);
           });
         } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: data.error
-          });
+          Swal.fire('Error', data.error, 'error');
         }
       } catch (error) {
-        ocultarLoader();
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'No se pudo obtener la lista de estudiantes'
-        });
-        console.error('Error:', error);
+        // El error ya fue manejado por callAppsScript
       }
-    });
+    }
+
+    async function enviarFormulario() {
+      const camposRequeridos = ['codigo', 'fecha', 'horario', 'bloques', 'bloquesReales', 'estudianteDedicado', 'temas', 'comentario'];
+      for (let campo of camposRequeridos) {
+        if (!document.getElementById(campo).value.trim()) {
+          Swal.fire('Campo Vacío', `Por favor completa el campo "${document.querySelector(`label[for='${campo}']`).textContent}".`, 'warning');
+          return;
+        }
+      }
+
+      const formData = {
+        codigo: document.getElementById("codigo").value.trim(),
+        fecha: document.getElementById("fecha").value,
+        horario: document.getElementById("horario").value,
+        bloques: Number(document.getElementById("bloques").value),
+        bloquesReales: Number(document.getElementById("bloquesReales").value),
+        estudianteDedicado: document.getElementById("estudianteDedicado").value.trim(),
+        temas: document.getElementById("temas").value.trim(),
+        captura: document.getElementById("captura").value.trim(),
+        comentario: document.getElementById("comentario").value.trim()
+      };
+
+      try {
+        const data = await callAppsScript('validarYGuardar', [formData]);
+        if (data.success) {
+          Swal.fire('¡Éxito!', 'Los datos han sido guardados correctamente.', 'success');
+          limpiarFormulario();
+        } else {
+          if (data.estudiantesValidos) {
+            Swal.fire('Error de Validación', `${data.error} Estudiantes válidos: ${data.estudiantesValidos}`, 'error');
+          } else {
+            Swal.fire('Error de Validación', data.error, 'error');
+          }
+        }
+      } catch (error) {
+        // El error ya fue manejado por callAppsScript
+      }
+    }
+
+    // --- Re-asignación de funciones sin cambios ---
+    // (Asegúrate de que estas funciones existan en tu código)
+    mostrarLoader = function () {
+      document.getElementById('loader').classList.add('show');
+      document.getElementById('overlay').classList.add('show');
+      document.getElementById('submitBtn').disabled = true;
+      document.getElementById('submitBtn').textContent = 'Enviando...';
+    };
+
+    ocultarLoader = function () {
+      document.getElementById('loader').classList.remove('show');
+      document.getElementById('overlay').classList.remove('show');
+      document.getElementById('submitBtn').disabled = false;
+      document.getElementById('submitBtn').textContent = 'Enviar';
+    };
+
+    limpiarFormulario = function () {
+      document.getElementById('codigo').value = '';
+      document.getElementById('bloques').value = '';
+      document.getElementById('bloquesReales').value = '';
+      document.getElementById('estudianteDedicado').innerHTML = '<option value="">Seleccione un estudiante</option>';
+      document.getElementById('temas').value = '';
+      document.getElementById('captura').value = '';
+      document.getElementById('comentario').value = '';
+      document.getElementById('codigo').focus();
+    };
+
   </script>
 </body>
 
