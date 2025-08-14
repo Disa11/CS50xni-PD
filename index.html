@@ -409,7 +409,7 @@
 
         const response = await fetch(url);
         const data = await response.json();
-        ocultarLoader();
+        //ocultarLoader();
 
         if (data.success) {
           data.estudiantes.forEach(function (est) {
@@ -439,5 +439,3 @@
 </body>
 
 </html>
-
-
